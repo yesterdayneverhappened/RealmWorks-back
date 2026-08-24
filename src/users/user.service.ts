@@ -54,4 +54,18 @@ export class UserService {
             throw e;
         }
     }
+
+    getMe(id: string) {
+        return this.prisma.user.findUnique({
+            where: {id},
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true,
+                createdAt: true,
+                updatedAt: true
+            }
+        })
+    }
 }
