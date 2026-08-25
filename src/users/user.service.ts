@@ -25,35 +25,6 @@ export class UserService {
     return user;
   }
 
-  deleteUser(id: string) {
-    return this.prisma.user.delete({ where: { id } });
-  }
-
-  async createUser(user: CreateUserDto) {
-    const passwordHash = await bcrypt.hash(user.password, this.saltRounds);
-
-    try {
-      return this.prisma.user.create({
-        data: {
-          name: user.name,
-          email: user.email,
-          passwordHash,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      });
-    } catch (e) {
-      if (e.code === 'P2002') {
-        throw new ConflictException('This email is already registered');
-      }
-
-      throw e;
-    }
-  }
-
     deleteUser(id:string) {
         return this.prisma.user.delete({ where: {id} })
     }
