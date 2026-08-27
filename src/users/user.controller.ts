@@ -15,37 +15,37 @@ export class UserController {
     return this.userService.getUsers();
   }
 
-    @UseGuards(JwtAuthGuard)
-    @Patch('me/password')
-    updatePassword(
-        @CurrentUser() user: { id:string },
-        @Body() dto: UpdatePasswordDto,
-    ) {
-        return this.userService.updatePassword(user.id, dto)
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Get('me')
-    getMe(@CurrentUser() user: { id: string }) {
-        return this.userService.getMe(user.id);
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Patch('me')
-    updateMe(
-        @CurrentUser() user: { id: string },
-        @Body() updateUserDto: UpdateUserDto
-    ) {
-        return this.userService.updateMe(user.id, updateUserDto)
-    }
-
-    @Get(':id')
-    getUser(@Param('id') id:string) {
-        return this.userService.getUser(id)
-    }
-
   @Post()
   createUser(@Body() userCreateDto: CreateUserDto) {
     return this.userService.createUser(userCreateDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/password')
+  updatePassword(
+      @CurrentUser() user: { id:string },
+      @Body() dto: UpdatePasswordDto,
+  ) {
+      return this.userService.updatePassword(user.id, dto)
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@CurrentUser() user: { id: string }) {
+      return this.userService.getMe(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateMe(
+      @CurrentUser() user: { id: string },
+      @Body() updateUserDto: UpdateUserDto
+  ) {
+      return this.userService.updateMe(user.id, updateUserDto)
+  }
+
+  @Get(':id')
+  getUser(@Param('id') id:string) {
+      return this.userService.getUser(id)
   }
 }

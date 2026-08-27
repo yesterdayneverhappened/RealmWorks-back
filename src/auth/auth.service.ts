@@ -127,17 +127,40 @@ export class AuthService {
     const [sessionId] = refreshToken.split('.');
 
     if (!sessionId) {
-        throw new UnauthorizedException();
+      throw new UnauthorizedException();
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: {
+        id: sessionId,
+      },
+    })
+
+    if(!session) {
+      throw new UnauthorizedException()
     }
 
     await this.prisma.session.delete({
-        where: {
-            id: sessionId,
-        },
+      where: {
+        id: sessionId,
+      },
     });
 
     return {
-        message: 'Logged out successfully',
+      message: 'Logged out successfully',
     };
-}
+  }
+
+  async getSessions(userId: string) {
+    return this.prisma.session.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        expiresAt: true
+      }
+    })
+  }
 }
