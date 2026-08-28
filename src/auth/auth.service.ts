@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
@@ -16,60 +16,63 @@ export class AuthService {
 
   async login(login: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: {
-        email: login.email,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        passwordHash: true,
-      },
+        where: {
+            email: login.email,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            passwordHash: true,
+        },
     });
 
     if (!user) {
-      throw new UnauthorizedException();
+        throw new UnauthorizedException();
     }
 
-    const { passwordHash, id } = user;
-
-    const isPasswordMatch = await bcrypt.compare(login.password, passwordHash);
+    const isPasswordMatch = await bcrypt.compare(
+        login.password,
+        user.passwordHash,
+    );
 
     if (!isPasswordMatch) {
-      throw new UnauthorizedException();
+        throw new UnauthorizedException();
     }
 
     const accessToken = this.jwtService.sign(
-      {
-        sub: user.id,
-      },
-      {
-        expiresIn: '30m'
-      }
+        {
+            sub: user.id,
+        },
+        {
+            expiresIn: '30m',
+        },
     );
 
-    const refreshTocken = this.generateRefreshedToken();
+    const refreshTokenSecret = this.generateRefreshedToken();
 
     const refreshTokenHash = await bcrypt.hash(
-      refreshTocken,
-      this.saltRounds
-    )
+        refreshTokenSecret,
+        this.saltRounds,
+    );
 
-    await this.prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshTokenHash,
-        expiresAt: new Date(
-          Date.now() + 30 * 24 * 60 * 60 * 1000,
-        )
-      }
+    const session = await this.prisma.session.create({
+        data: {
+            userId: user.id,
+            refreshTokenHash,
+            expiresAt: new Date(
+                Date.now() + 30 * 24 * 60 * 60 * 1000,
+            ),
+        },
     });
 
+    const refreshToken = `${session.id}.${refreshTokenSecret}`;
+
     return {
-      accessToken,
-      refreshTocken
-    }
-  }
+        accessToken,
+        refreshToken,
+    };
+}
 
   private generateRefreshedToken() {
     return randomBytes(64).toString('hex')
@@ -162,5 +165,28 @@ export class AuthService {
         expiresAt: true
       }
     })
+  }
+
+  async deleteSession(userId: string, sessionId: string) {
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: sessionId,
+        userId,
+      }
+    })
+
+    if(!session) {
+      throw new NotFoundException()
+    }
+
+    await this.prisma.session.delete({
+      where: {
+        id: session.id
+      }
+    });
+
+    return {
+      message: 'Session deleted'
+    }
   }
 }
