@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Build" ADD COLUMN     "likesCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "photos" TEXT[],
+ADD COLUMN     "rating" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "schematicUrl" TEXT;
