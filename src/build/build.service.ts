@@ -1,14 +1,123 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "prisma/prisma.service";
 import { CreateBuildDto } from "./dto/create-build.dto";
-import { CreateCommentDto } from "./dto/create-comment.dto";
+import { title } from "process";
+import { BuildSort } from "./enums/build-sort";
 
 @Injectable()
 export class BuildService {
     constructor (private readonly prisma: PrismaService) {}
 
-    getBuilds() {
-        return this.prisma.build.findMany();
+    async getBuilds(
+        page: number, 
+        limit: number, 
+        search?: string, 
+        userId?: string, 
+        sort?: BuildSort
+    ) {
+        const skip = (page - 1) * limit;
+
+        const orderBy = {
+            [BuildSort.NEWEST]: {
+                createdAt: 'desc' as const,
+            },
+            [BuildSort.OLDEST]: {
+                createdAt: 'asc' as const
+            },
+            [BuildSort.POPULAR]: {
+                likes: {
+                    _count: 'desc' as const
+                }
+            },
+            [BuildSort.UNPOPULAR]: {
+                likes: {
+                    _count: 'asc' as const
+                }
+            },
+        }[sort ?? BuildSort.NEWEST];
+
+        const where = search ? {
+            OR: [
+                {
+                    title: {
+                        contains: search,
+                        mode: 'insensitive' as const,
+                    },
+                },
+                {
+                    description: {
+                        contains: search,
+                        mode: 'insensitive' as const,
+                    }
+                }
+            ]
+        } : undefined
+
+        const [builds, total] = await Promise.all([
+            this.prisma.build.findMany({
+                where,
+                skip,
+                take: limit,
+
+                orderBy,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            avatarUrl: true
+                        },
+                    },
+                    _count: {
+                        select: {
+                            likes: true,
+                            comments: true
+                        }
+                    }
+                }
+            }),
+
+            this.prisma.build.count({ where }),
+        ]);
+
+        let likedBuildIds = new Set<string>();
+
+        if(userId) {
+            const userLikes = await this.prisma.buildLike.findMany({
+                where: {
+                    userId,
+                    buildId: {
+                        in: builds.map(build => build.id)
+                    },
+                },
+                select: {
+                    buildId: true
+                }
+            });
+
+            likedBuildIds = new Set(
+            userLikes.map(like => like.buildId)
+            );
+        }
+
+        const result = builds.map(build => ({
+            ...build,
+            isLiked: likedBuildIds.has(build.id),
+        }))
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            data: result,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            }
+        }
     }
 
     createBuild(build: CreateBuildDto, userId: string) {
@@ -31,10 +140,51 @@ export class BuildService {
         }
     }
 
-    getBuild(id: string) {
-        return this.prisma.build.findUnique({ 
-            where: { id }
-        })
+    async getBuild(id: string, userId?: string) {
+        const build = await this.prisma.build.findUnique({
+            where: {
+                id,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatarUrl: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        likes: true,
+                        comments: true,
+                    },
+                },
+            },
+        });
+    
+        if (!build) {
+            throw new NotFoundException('Build not found');
+        }
+    
+        let isLiked = false;
+    
+        if (userId) {
+            const like = await this.prisma.buildLike.findUnique({
+                where: {
+                    userId_buildId: {
+                        userId,
+                        buildId: id,
+                    },
+                },
+            });
+    
+            isLiked = !!like;
+        }
+    
+        return {
+            ...build,
+            isLiked,
+        };
     }
 
     async editBuild(id: string, userId: string, data: CreateBuildDto) {
@@ -46,7 +196,7 @@ export class BuildService {
         });
 
         if(!build) {
-            throw new NotFoundException('Build not found')
+            throw new NotFoundException('Build not found');
         }
 
         return this.prisma.build.update({
@@ -69,7 +219,7 @@ export class BuildService {
         });
 
         if(!build) {
-            throw new NotFoundException('Build not found')
+            throw new NotFoundException('Build not found');
         }
 
         return this.prisma.build.delete({
@@ -77,71 +227,5 @@ export class BuildService {
                 id
             }
         })
-    }
-
-    async likeBuild(buildId: string, userId: string) {
-        try {
-            return await this.prisma.buildLike.create({
-                data: {
-                    userId,
-                    buildId,
-                },
-            });
-        } catch (e) {
-            if (e.code === 'P2002') {
-                throw new ConflictException(
-                    'You already liked this build',
-                );
-            }
-    
-            throw e;
-        }
-    }
-
-    cancelLike(buildId: string, userId: string) {
-        this.prisma.buildLike.delete({
-            where: {
-                userId_buildId: {
-                    userId,
-                    buildId,
-                },
-            }
-        })
-    }
-
-    async createComment(
-        buildId: string,
-        userId: string,
-        dto: CreateCommentDto,
-    ) {
-        return this.prisma.comment.create({
-            data: {
-                content: dto.content,
-                buildId,
-                userId,
-            },
-        });
-    }
-
-    async deleteComment(
-        commentId: string,
-        userId: string,
-    ) {
-        const comment = await this.prisma.comment.findFirst({
-            where: {
-                id: commentId,
-                userId,
-            },
-        });
-    
-        if (!comment) {
-            throw new NotFoundException('Comment not found');
-        }
-    
-        return this.prisma.comment.delete({
-            where: {
-                id: comment.id,
-            },
-        });
     }
 }
