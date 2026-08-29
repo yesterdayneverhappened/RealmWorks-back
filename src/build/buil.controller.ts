@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } fro
 import { BuildService } from "./build.service";
 import { JwtAuthGuard } from "src/auth/guard/jwt.guard";
 import { CreateBuildDto } from "./dto/create-build.dto";
+import { CreateCommentDto } from "./dto/create-comment.dto";
 
 @Controller('builds')
 export class BuildsController {
@@ -71,5 +72,24 @@ export class BuildsController {
         @Req() req: any
     ) {
         return this.buildService.cancelLike(id, req.user.id)
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/comment')
+    commentBuild(
+        @Param('id') id: string,
+        @Req() req: any,
+        @Body() dto: CreateCommentDto
+    ) {
+        return this.buildService.createComment(id, req.user.id, dto)
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete(':id/comment')
+    deleteComment(
+        @Param('id') id: string,
+        @Req() req: any
+    ) {
+        return this.buildService.deleteComment(id, req.user.id)
     }
 }

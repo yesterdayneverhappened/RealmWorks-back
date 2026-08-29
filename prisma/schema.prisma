@@ -25,6 +25,7 @@ model User {
   sessions Session[]
   builds Build[]
   likes BuildLike[]
+  comments Comment[]
 }
 
 model Session {
@@ -48,6 +49,7 @@ model Build {
   schematicUrl String?
 
   likes BuildLike[]
+  comments Comment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -68,4 +70,20 @@ model BuildLike {
   build Build @relation(fields: [buildId], references: [id], onDelete: Cascade)
 
   @@unique([userId, buildId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  buildId   String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  build     Build    @relation(fields: [buildId], references: [id], onDelete: Cascade)
+
+  @@index([buildId])
+  @@index([userId])
 }
