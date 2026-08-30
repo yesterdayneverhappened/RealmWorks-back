@@ -6,13 +6,13 @@ import { BuildSort } from "./enums/build-sort";
 
 @Injectable()
 export class BuildService {
-    constructor (private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     async getBuilds(
-        page: number, 
-        limit: number, 
-        search?: string, 
-        userId?: string, 
+        page: number,
+        limit: number,
+        search?: string,
+        userId?: string,
         sort?: BuildSort
     ) {
         const skip = (page - 1) * limit;
@@ -82,7 +82,7 @@ export class BuildService {
 
         let likedBuildIds = new Set<string>();
 
-        if(userId) {
+        if (userId) {
             const userLikes = await this.prisma.buildLike.findMany({
                 where: {
                     userId,
@@ -161,13 +161,13 @@ export class BuildService {
                 },
             },
         });
-    
+
         if (!build) {
             throw new NotFoundException('Build not found');
         }
-    
+
         let isLiked = false;
-    
+
         if (userId) {
             const like = await this.prisma.buildLike.findUnique({
                 where: {
@@ -177,10 +177,10 @@ export class BuildService {
                     },
                 },
             });
-    
+
             isLiked = !!like;
         }
-    
+
         return {
             ...build,
             isLiked,
@@ -195,7 +195,7 @@ export class BuildService {
             }
         });
 
-        if(!build) {
+        if (!build) {
             throw new NotFoundException('Build not found');
         }
 
@@ -218,7 +218,7 @@ export class BuildService {
             }
         });
 
-        if(!build) {
+        if (!build) {
             throw new NotFoundException('Build not found');
         }
 
