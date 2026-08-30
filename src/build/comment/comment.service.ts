@@ -38,4 +38,58 @@ export class CommentService {
             },
         });
     }
+
+    async getComments(
+        page: number,
+        limit: number,
+        buildId: string,
+    ) {
+        const skip = (page - 1) * limit;
+    
+        const [comments, total] = await Promise.all([
+            this.prisma.comment.findMany({
+                where: {
+                    buildId,
+                },
+    
+                skip,
+                take: limit,
+    
+                orderBy: {
+                    createdAt: 'desc',
+                },
+    
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            avatarUrl: true,
+                        },
+                    },
+                },
+            }),
+    
+            this.prisma.comment.count({
+                where: {
+                    buildId,
+                },
+            }),
+        ]);
+    
+        const totalPages = Math.ceil(total / limit);
+    
+        return {
+            data: comments,
+    
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
 }

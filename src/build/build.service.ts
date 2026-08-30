@@ -96,7 +96,7 @@ export class BuildService {
             });
 
             likedBuildIds = new Set(
-            userLikes.map(like => like.buildId)
+                userLikes.map(like => like.buildId)
             );
         }
 
