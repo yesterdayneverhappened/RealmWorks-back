@@ -7,26 +7,85 @@ import { UpdatePasswordDto } from "./dto/update-password.dto";
 
 @Injectable()
 export class UserService {
-  private readonly saltRounds = 11;
+    private readonly saltRounds = 11;
 
-  constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
-  getUsers() {
-    return this.prisma.user.findMany();
-  }
-
-  async getUser(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-
-    if (!user) {
-      throw new NotFoundException();
+    getUsers() {
+        return this.prisma.user.findMany();
     }
 
-    return user;
-  }
+    async getUser(id: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id },
 
-    deleteUser(id:string) {
-        return this.prisma.user.delete({ where: {id} })
+            select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+            }
+        });
+
+        if (!user) {
+            throw new NotFoundException();
+        }
+
+        return user;
+    }
+
+    async getUserBuilds(
+        userId: string,
+        page: number,
+        limit: number,
+    ) {
+        const skip = (page - 1) * limit;
+
+        const [builds, total] = await Promise.all([
+            this.prisma.build.findMany({
+                where: {
+                    userId,
+                },
+
+                skip,
+                take: limit,
+
+                orderBy: {
+                    createdAt: 'desc',
+                },
+
+                include: {
+                    _count: {
+                        select: {
+                            likes: true,
+                            comments: true,
+                        },
+                    },
+                },
+            }),
+
+            this.prisma.build.count({
+                where: {
+                    userId,
+                },
+            }),
+        ]);
+
+        return {
+            data: builds,
+
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasNextPage: page * limit < total,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
+
+    deleteUser(id: string) {
+        return this.prisma.user.delete({ where: { id } })
     }
 
     async createUser(user: CreateUserDto) {
@@ -34,7 +93,7 @@ export class UserService {
             user.password,
             this.saltRounds
         );
-        
+
         try {
             return this.prisma.user.create({
                 data: {
@@ -59,7 +118,7 @@ export class UserService {
 
     getMe(id: string) {
         return this.prisma.user.findUnique({
-            where: {id},
+            where: { id },
             select: {
                 id: true,
                 name: true,
@@ -99,7 +158,7 @@ export class UserService {
             }
         });
 
-        if(!user) {
+        if (!user) {
             throw new NotFoundException()
         }
 
@@ -108,7 +167,7 @@ export class UserService {
             user.passwordHash
         );
 
-        if(!isPasswordMatch){
+        if (!isPasswordMatch) {
             throw new UnauthorizedException('Current password is incorrect')
         }
 
