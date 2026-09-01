@@ -10,10 +10,8 @@ export class CreateBuildDto {
     description: string;
 
     @IsArray()
-    @IsUrl({}, {each: true})
     photos: string[];
 
     @IsString()
-    @IsUrl()
     schematicUrl: string;
 }

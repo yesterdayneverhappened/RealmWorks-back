@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -74,5 +75,48 @@ export class FilesService {
     return {
       url,
     };
+  }
+
+  async uploadSchematic(file: Express.Multer.File) {
+    const extension = file.originalname
+      .split('.')
+      .pop()
+      ?.toLocaleLowerCase();
+
+    if (
+      extension !== 'schematic' &&
+      extension !== 'schem'
+    ) {
+      throw new BadRequestException(
+        'Only .schematic and .schem files are allowed',
+      );
+    }
+
+    const key = `builds/schematics/${crypto.randomUUID()}.${extension}`;
+
+    await this.r2.send(
+      new PutObjectCommand({
+        Bucket: this.configService.getOrThrow<string>(
+          'R2_BUSCKET_NAME',
+        ),
+
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype
+      }),
+    );
+
+    return { key };
+  }
+
+  async deleteFile(key: string) {
+    await this.r2.send(
+      new DeleteObjectCommand({
+        Bucket: this.configService.getOrThrow<string>(
+          'R2_BUCKET_NAME',
+        ),
+        Key: key,
+      }),
+    );
   }
 }

@@ -3,10 +3,15 @@ import { PrismaService } from "prisma/prisma.service";
 import { CreateBuildDto } from "./dto/create-build.dto";
 import { title } from "process";
 import { BuildSort } from "./enums/build-sort";
+import { FilesService } from "src/files/files.service";
+import { UpdateBuildDto } from "./dto/update-build.dto";
 
 @Injectable()
 export class BuildService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly fileService: FilesService
+    ) { }
 
     async getBuilds(
         page: number,
@@ -187,7 +192,7 @@ export class BuildService {
         };
     }
 
-    async editBuild(id: string, userId: string, data: CreateBuildDto) {
+    async editBuild(id: string, userId: string, data: UpdateBuildDto) {
         const build = await this.prisma.build.findFirst({
             where: {
                 id,
@@ -198,6 +203,23 @@ export class BuildService {
         if (!build) {
             throw new NotFoundException('Build not found');
         }
+
+        const removedPhotos = build.photos.filter(
+            (photo) => !data.photos!.includes(photo),
+        );
+
+        const filesToDelete = [...removedPhotos];
+
+        if (
+            build.schematicUrl &&
+            build.schematicUrl !== data.schematicUrl
+        ) {
+            filesToDelete.push(build.schematicUrl);
+        }
+
+        await Promise.all(
+            filesToDelete.map((key) => this.fileService.deleteFile(key))
+        )
 
         return this.prisma.build.update({
             where: { id: build.id },
@@ -221,6 +243,20 @@ export class BuildService {
         if (!build) {
             throw new NotFoundException('Build not found');
         }
+
+        const filesToDelete = [
+            ...build.photos,
+        ];
+
+        if (build.schematicUrl) {
+            filesToDelete.push(build.schematicUrl);
+        }
+
+        await Promise.all(
+            filesToDelete.map((key) =>
+                this.fileService.deleteFile(key),
+            ),
+        );
 
         return this.prisma.build.delete({
             where: {

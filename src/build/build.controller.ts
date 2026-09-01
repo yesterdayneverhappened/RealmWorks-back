@@ -4,10 +4,11 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt.guard';
 import { CreateBuildDto } from './dto/create-build.dto';
 import { GetBuildsDto } from './dto/get-builds.dto';
 import { OptionalJwtGuard } from './guard/optional-jwt.guard';
+import { UpdateBuildDto } from './dto/update-build.dto';
 
 @Controller('builds')
 export class BuildsController {
-    constructor(private readonly buildService: BuildService) {}
+    constructor(private readonly buildService: BuildService) { }
 
     @Get()
     getAllBuilds(
@@ -41,7 +42,7 @@ export class BuildsController {
     @Patch(':id')
     editBuild(
         @Param('id') id: string,
-        @Body() build: CreateBuildDto,
+        @Body() build: UpdateBuildDto,
         @Req() req: any,
     ) {
         return this.buildService.editBuild(id, req.user.id, build);
