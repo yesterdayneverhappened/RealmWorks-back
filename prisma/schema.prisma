@@ -4,8 +4,8 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -23,17 +23,17 @@ model User {
   updatedAt    DateTime @updatedAt
 
   sessions Session[]
-  builds Build[]
-  likes BuildLike[]
+  builds   Build[]
+  likes    BuildLike[]
   comments Comment[]
 }
 
 model Session {
-  id String @id @default(uuid())
+  id               String   @id @default(uuid())
   refreshTokenHash String
-  userId String
-  createdAt DateTime @default(now())
-  expiresAt DateTime
+  userId           String
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -41,21 +41,26 @@ model Session {
 }
 
 model Build {
-  id String @id @default(uuid())
-  title String
+  id          String  @id @default(uuid())
+  title       String
   description String?
 
-  photos String[]
+  photos       String[]
   schematicUrl String?
 
-  likes BuildLike[]
+  likes    BuildLike[]
   comments Comment[]
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  tags BuildTag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -63,10 +68,10 @@ model Build {
 model BuildLike {
   id String @id @default(uuid())
 
-  userId String
+  userId  String
   buildId String
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   build Build @relation(fields: [buildId], references: [id], onDelete: Cascade)
 
   @@unique([userId, buildId])
@@ -78,12 +83,42 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userId    String
-  buildId   String
+  userId  String
+  buildId String
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  build     Build    @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  build Build @relation(fields: [buildId], references: [id], onDelete: Cascade)
 
   @@index([buildId])
   @@index([userId])
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+  slug String @unique
+
+  builds Build[]
+
+  createdAt DateTime @default(now())
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  name String @unique
+  slug String @unique
+
+  builds BuildTag[]
+
+  createdAt DateTime @default(now())
+}
+
+model BuildTag {
+  buildId String
+  tagId   String
+
+  build Build @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([buildId, tagId])
 }

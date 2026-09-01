@@ -18,7 +18,9 @@ export class BuildService {
         limit: number,
         search?: string,
         userId?: string,
-        sort?: BuildSort
+        sort?: BuildSort,
+        categoryId?: string,
+        tags?: string
     ) {
         const skip = (page - 1) * limit;
 
@@ -41,22 +43,38 @@ export class BuildService {
             },
         }[sort ?? BuildSort.NEWEST];
 
-        const where = search ? {
-            OR: [
-                {
-                    title: {
-                        contains: search,
-                        mode: 'insensitive' as const,
+        const where = {
+            ...(search && {
+                OR: [
+                    {
+                        title: {
+                            contains: search,
+                            mode: 'insensitive' as const,
+                        },
                     },
-                },
-                {
-                    description: {
-                        contains: search,
-                        mode: 'insensitive' as const,
-                    }
-                }
-            ]
-        } : undefined
+                    {
+                        description: {
+                            contains: search,
+                            mode: 'insensitive' as const,
+                        },
+                    },
+                ],
+            }),
+
+            ...(categoryId && { categoryId }),
+
+            ...(tags && {
+                AND: tags.split(',').map((tag) => ({
+                    tags: {
+                        some: {
+                            tag: {
+                                slug: tag,
+                            },
+                        },
+                    },
+                })),
+            }),
+        };
 
         const [builds, total] = await Promise.all([
             this.prisma.build.findMany({
@@ -66,6 +84,12 @@ export class BuildService {
 
                 orderBy,
                 include: {
+                    category: true,
+                    tags: {
+                        include: {
+                            tag: true
+                        }
+                    },
                     user: {
                         select: {
                             id: true,
@@ -125,24 +149,69 @@ export class BuildService {
         }
     }
 
-    createBuild(build: CreateBuildDto, userId: string) {
-        try {
-            return this.prisma.build.create({
-                data: {
-                    title: build.title,
-                    description: build.description,
-                    photos: build.photos,
-                    schematicUrl: build.schematicUrl,
-                    userId
-                }
-            })
-        } catch (e) {
-            if (e.code === 'P2002') {
-                throw new ConflictException('This email is already registered');
-            }
+    async createBuild(
+        data: CreateBuildDto,
+        userId: string,
+    ) {
+        const tags = await Promise.all(
+            data.tags.map((tag) => {
+                const slug = tag.trim().toLowerCase();
 
-            throw e;
-        }
+                return this.prisma.tag.upsert({
+                    where: {
+                        slug,
+                    },
+                    update: {},
+                    create: {
+                        name: tag.trim(),
+                        slug,
+                    },
+                });
+            }),
+        );
+
+        return this.prisma.build.create({
+            data: {
+                title: data.title,
+                description: data.description,
+                photos: data.photos,
+                schematicUrl: data.schematicUrl,
+
+                userId,
+                categoryId: data.categoryId,
+
+                tags: {
+                    create: tags.map((tag) => ({
+                        tagId: tag.id,
+                    })),
+                },
+            },
+
+            include: {
+                category: true,
+
+                tags: {
+                    include: {
+                        tag: true,
+                    },
+                },
+
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatarUrl: true,
+                    },
+                },
+
+                _count: {
+                    select: {
+                        likes: true,
+                        comments: true,
+                    },
+                },
+            },
+        });
     }
 
     async getBuild(id: string, userId?: string) {
@@ -151,6 +220,12 @@ export class BuildService {
                 id,
             },
             include: {
+                category: true,
+                tags: {
+                    include: {
+                        tag: true
+                    }
+                },
                 user: {
                     select: {
                         id: true,
@@ -197,6 +272,9 @@ export class BuildService {
             where: {
                 id,
                 userId
+            },
+            include: {
+                tags: true
             }
         });
 
@@ -215,6 +293,21 @@ export class BuildService {
             build.schematicUrl !== data.schematicUrl
         ) {
             filesToDelete.push(build.schematicUrl);
+        }
+
+        if (data.tags) {
+            await this.prisma.buildTag.deleteMany({
+                where: {
+                    buildId: build.id,
+                },
+            });
+
+            await this.prisma.buildTag.createMany({
+                data: data.tags.map((tagId) => ({
+                    buildId: build.id,
+                    tagId,
+                })),
+            });
         }
 
         await Promise.all(

@@ -23,4 +23,12 @@ export class GetBuildsDto {
     @IsOptional()
     @IsEnum([BuildSort])
     sort?: BuildSort = BuildSort.NEWEST;
+
+    @IsOptional()
+    @IsString()
+    categoryId?: string;
+
+    @IsOptional()
+    @IsString()
+    tags?: string;
 }

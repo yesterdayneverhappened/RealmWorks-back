@@ -14,4 +14,12 @@ export class CreateBuildDto {
 
     @IsString()
     schematicUrl: string;
+
+    @IsNotEmpty()
+    @IsString()
+    categoryId: string;
+
+    @IsArray()
+    @IsString({ each: true })
+    tags: string[];
 }

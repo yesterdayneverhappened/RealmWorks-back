@@ -10,6 +10,7 @@ import { UpdateBuildDto } from './dto/update-build.dto';
 export class BuildsController {
     constructor(private readonly buildService: BuildService) { }
 
+    @UseGuards(OptionalJwtGuard)
     @Get()
     getAllBuilds(
         @Query() query: GetBuildsDto,
@@ -19,7 +20,10 @@ export class BuildsController {
             query.page,
             query.limit,
             query.search,
-            query.sort
+            query.sort,
+            req.user.id,
+            query.categoryId,
+            query.tags
         );
     }
 
