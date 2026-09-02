@@ -7,12 +7,16 @@ import { PrismaModule } from 'prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { BuildModule } from './build/build.module';
 import { FilesModule } from './files/files.module';
+import { TagModule } from './tags/tags.module';
+import { CategoryModule } from './categories/categories.module';
 
 @Module({
   imports: [
     AuthModule,
     UserModule,
     BuildModule,
+    TagModule,
+    CategoryModule,
     FilesModule,
     PrismaModule,
     ConfigModule.forRoot({

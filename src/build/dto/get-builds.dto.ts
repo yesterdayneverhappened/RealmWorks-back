@@ -1,21 +1,8 @@
-import { Type } from "class-transformer";
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsEnum, IsOptional, IsString } from "class-validator";
+import { PaginationDto } from "src/common/dto/pagination.dto";
 import { BuildSort } from "../enums/build-sort";
 
-export class GetBuildsDto {
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1)
-    page: number = 1;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1)
-    @Max(50)
-    limit: number = 20;
-
+export class GetBuildsDto extends PaginationDto {
     @IsOptional()
     @IsString()
     search?: string;

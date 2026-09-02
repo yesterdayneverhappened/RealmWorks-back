@@ -20,8 +20,8 @@ export class BuildsController {
             query.page,
             query.limit,
             query.search,
+            req.user?.id,
             query.sort,
-            req.user.id,
             query.categoryId,
             query.tags
         );
